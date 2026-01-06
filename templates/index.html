@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fraud Detection Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .risk-CRITICAL { background-color: #f8d7da; color: #721c24; cursor: pointer; }
+        .risk-HIGH { background-color: #fff3cd; color: #856404; cursor: pointer; }
+        .risk-MEDIUM { background-color: #d1ecf1; color: #0c5460; cursor: pointer; }
+        .risk-LOW { background-color: #d4edda; color: #155724; cursor: pointer; }
+        .stat-card { border-radius: 10px; transition: transform 0.2s; border: none; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .refresh-badge { font-size: 0.8rem; opacity: 0.7; }
+        .filter-btn.active { font-weight: bold; border-bottom: 3px solid currentColor; border-radius: 0; }
+        .chart-container { position: relative; height: 300px; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Fraud System</a>
+            <div class="navbar-nav">
+                <a class="nav-link active" href="/dashboard">Dashboard</a>
+                <a class="nav-link" href="/web">Submit Transaction</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <h1 class="mb-0">Fraud Detection Analytics</h1>
+                <p class="refresh-badge mb-0 text-muted">Last updated: {{ summary.last_updated }}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button onclick="location.reload()" class="btn btn-outline-secondary">Refresh</button>
+                <a href="/web" class="btn btn-primary">New Assessment</a>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card bg-white shadow-sm p-3">
+                    <h6 class="text-muted text-uppercase small fw-bold">Total Analyzed</h6>
+                    <h2 class="mb-0">{{ summary.total_count }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-white shadow-sm p-3 border-start border-danger border-4">
+                    <h6 class="text-muted text-uppercase small fw-bold">Critical Alerts</h6>
+                    <h2 class="text-danger mb-0">{{ summary.critical_count }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-white shadow-sm p-3">
+                    <h6 class="text-muted text-uppercase small fw-bold">Avg. Amount</h6>
+                    <h2 class="mb-0">${{ "%.2f"|format(summary.avg_amount) }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-white shadow-sm p-3 border-start border-success border-4">
+                    <h6 class="text-muted text-uppercase small fw-bold">System Status</h6>
+                    <h2 class="text-success mb-0">Active</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <!-- Risk Level Distribution -->
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">Risk Levels</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="riskChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Distribution -->
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">By Location</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="locationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Merchant Distribution -->
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">By Merchant</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="merchantChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Recent Transactions Table -->
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Risk Assessments</h5>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-light filter-btn active" onclick="filterTable('ALL', this)">All</button>
+                            <button class="btn btn-light filter-btn" onclick="filterTable('CRITICAL', this)">Critical</button>
+                            <button class="btn btn-light filter-btn" onclick="filterTable('HIGH', this)">High</button>
+                            <button class="btn btn-light filter-btn" onclick="filterTable('LOW', this)">Low</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="txnTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Time</th>
+                                        <th>Txn ID</th>
+                                        <th>Amount</th>
+                                        <th>Location</th>
+                                        <th>Merchant</th>
+                                        <th>Level</th>
+                                        <th class="pe-3 text-end">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for txn in transactions %}
+                                    <tr class="risk-{{ txn.risk_level }} txn-row" 
+                                        data-level="{{ txn.risk_level }}"
+                                        onclick="showDetails({{ txn | tojson | forceescape }})">
+                                        <td class="ps-3">{{ txn.timestamp[11:19] }}</td>
+                                        <td><code>{{ txn.transaction_id }}</code></td>
+                                        <td>${{ "%.2f"|format(txn.amount) }}</td>
+                                        <td>{{ txn.location }}</td>
+                                        <td>{{ txn.merchant }}</td>
+                                        <td><span class="badge rounded-pill bg-dark">{{ txn.risk_level }}</span></td>
+                                        <td class="pe-3 text-end fw-bold">{{ txn.risk_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div class="modal fade" id="detailsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Transaction Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase">Transaction ID</label>
+                        <div id="modal-id" class="fw-bold"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted small text-uppercase">Amount</label>
+                            <div id="modal-amount"></div>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted small text-uppercase">Risk Score</label>
+                            <div id="modal-score" class="h4 mb-0"></div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted small text-uppercase">Location</label>
+                            <div id="modal-location"></div>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted small text-uppercase">Merchant</label>
+                            <div id="modal-merchant"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase">Risk Reasons</label>
+                        <ul id="modal-reasons" class="list-group list-group-flush mt-2">
+                            <!-- Reasons injected here -->
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const detailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
+
+        function showDetails(txn) {
+            document.getElementById('modal-id').innerText = txn.transaction_id;
+            document.getElementById('modal-amount').innerText = '$' + txn.amount.toFixed(2);
+            document.getElementById('modal-score').innerText = txn.risk_score;
+            document.getElementById('modal-location').innerText = txn.location;
+            document.getElementById('modal-merchant').innerText = txn.merchant;
+            
+            const reasonsList = document.getElementById('modal-reasons');
+            reasonsList.replaceChildren();
+            
+            if (txn.reasons && txn.reasons.length > 0) {
+                txn.reasons.forEach(reason => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-danger py-2 small';
+                    li.innerText = reason;
+                    reasonsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'list-group-item list-group-item-success py-2 small';
+                li.innerText = 'No risk factors detected';
+                reasonsList.appendChild(li);
+            }
+            
+            detailsModal.show();
+        }
+
+        function filterTable(level, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const rows = document.querySelectorAll('.txn-row');
+            rows.forEach(row => {
+                if (level === 'ALL' || row.dataset.level === level) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Risk Level Chart
+        new Chart(document.getElementById('riskChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [
+                        {{ summary.distribution.CRITICAL }},
+                        {{ summary.distribution.HIGH }},
+                        {{ summary.distribution.MEDIUM }},
+                        {{ summary.distribution.LOW }}
+                    ],
+                    backgroundColor: ['#dc3545', '#ffc107', '#0dcaf0', '#198754'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15 } }
+                }
+            }
+        });
+
+        // Location Distribution Chart
+        new Chart(document.getElementById('locationChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ summary.location_distribution.keys() | list | tojson }},
+                datasets: [{
+                    label: 'Transactions',
+                    data: {{ summary.location_distribution.values() | list | tojson }},
+                    backgroundColor: '#0dcaf0',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Merchant Distribution Chart
+        new Chart(document.getElementById('merchantChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ summary.merchant_distribution.keys() | list | tojson }},
+                datasets: [{
+                    label: 'Transactions',
+                    data: {{ summary.merchant_distribution.values() | list | tojson }},
+                    backgroundColor: '#6610f2',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

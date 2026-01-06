@@ -1,0 +1,22 @@
+{
+    "high_risk_locations": ["HighRiskCountry", "Unknown", "SanctionedRegion"],
+    "risky_merchants": ["GamblingSite", "CryptoExchange", "AdultServices"],
+    "amount_thresholds": {
+        "low": 1000,
+        "medium": 5000,
+        "high": 10000
+    },
+    "velocity_rules": {
+        "max_transactions_per_hour": 3,
+        "max_amount_per_hour": 20000
+    },
+    "risk_weights": {
+        "amount_high": 50,
+        "amount_medium": 30,
+        "amount_low": 10,
+        "location": 40,
+        "merchant": 30,
+        "velocity_count": 60,
+        "velocity_amount": 50
+    }
+}

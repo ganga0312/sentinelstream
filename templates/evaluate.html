@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fraud Detection - Evaluate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-card { display: none; margin-top: 20px; }
+        .risk-CRITICAL { border-left: 5px solid #dc3545; background-color: #f8d7da; }
+        .risk-HIGH { border-left: 5px solid #ffc107; background-color: #fff3cd; }
+        .risk-MEDIUM { border-left: 5px solid #0dcaf0; background-color: #d1ecf1; }
+        .risk-LOW { border-left: 5px solid #198754; background-color: #d4edda; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Fraud System</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/dashboard">Dashboard</a>
+                <a class="nav-link active" href="/web">Submit Transaction</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Manual Risk Evaluation</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="evalForm">
+                            <div class="mb-3">
+                                <label class="form-label">Transaction ID</label>
+                                <input type="text" id="txn_id" class="form-control" placeholder="txn_123" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Amount ($)</label>
+                                <input type="number" id="amount" class="form-control" placeholder="100.00" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Location</label>
+                                <input type="text" id="location" class="form-control" placeholder="US" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Merchant</label>
+                                <input type="text" id="merchant" class="form-control" placeholder="Amazon" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Check for Fraud</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultCard" class="card result-card shadow p-4">
+                    <h4 id="riskLevel" class="mb-2"></h4>
+                    <p class="mb-1"><strong>Score:</strong> <span id="riskScore"></span>/100</p>
+                    <div id="reasons" class="mt-3">
+                        <h6>Reasons:</h6>
+                        <ul id="reasonsList"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('evalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                transaction_id: document.getElementById('txn_id').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                location: document.getElementById('location').value,
+                merchant: document.getElementById('merchant').value
+            };
+
+            try {
+                const response = await fetch('/evaluate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'secret-fraud-api-key'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                const card = document.getElementById('resultCard');
+                card.className = `card result-card shadow p-4 risk-${data.risk_level}`;
+                card.style.display = 'block';
+
+                document.getElementById('riskLevel').innerText = `Risk Level: ${data.risk_level}`;
+                document.getElementById('riskScore').innerText = data.risk_score;
+
+                const reasonsList = document.getElementById('reasonsList');
+                reasonsList.replaceChildren();
+                if (data.reasons.length === 0) {
+                    const li = document.createElement('li');
+                    li.innerText = 'No suspicious flags detected.';
+                    reasonsList.appendChild(li);
+                } else {
+                    data.reasons.forEach(r => {
+                        const li = document.createElement('li');
+                        li.innerText = r;
+                        reasonsList.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                alert('Error connecting to the API');
+            }
+        });
+    </script>
+</body>
+</html>

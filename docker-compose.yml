@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fraud-detection-api:
+    build: .
+    container_name: fraud-detection-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./fraud_config.json:/app/fraud_config.json # Mount config for easy updates
+      - ./fraud_detection.db:/app/fraud_detection.db # Persist database
+      - ./fraud_alerts.log:/app/fraud_alerts.log # Persist logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
