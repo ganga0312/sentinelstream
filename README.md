@@ -22,16 +22,16 @@ pip install -r requirements.txt
 
 ### 2. Run the API
 ```bash
-uvicorn api:app --reload --port 8000
+uvicorn api:app --reload --port 8001
 ```
 
 ### 3. Usage
-- **API Docs**: Access interactive documentation at `http://127.0.0.1:8000/docs`.
-- **Dashboard**: Monitor transactions at `http://127.0.0.1:8000/dashboard` (or root `/`).
+- **API Docs**: Access interactive documentation at `http://127.0.0.1:8001/docs`.
+- **Dashboard**: Monitor transactions at `http://127.0.0.1:8001/dashboard` (or root `/`).
 
 **Example Request:**
 ```bash
-curl -X POST "http://127.0.0.1:8000/evaluate" \
+curl -X POST "http://127.0.0.1:8001/evaluate" \
      -H "X-API-Key: secret-fraud-api-key" \
      -H "Content-Type: application/json" \
      -d '{
@@ -41,6 +41,21 @@ curl -X POST "http://127.0.0.1:8000/evaluate" \
        "merchant": "GamblingSite"
      }'
 ```
+
+## Running on GitHub
+
+### 1. GitHub Actions (CI)
+The project includes a GitHub Actions workflow in `.github/workflows/test.yml`. It automatically:
+- Installs dependencies.
+- Runs unit tests.
+- Starts the FastAPI server and runs integration tests.
+
+### 2. GitHub Codespaces
+You can run this project entirely in your browser using GitHub Codespaces:
+1. Go to your GitHub repository.
+2. Click the **Code** button and select the **Codespaces** tab.
+3. Click **Create codespace on main**.
+4. Once the environment loads, run the API using the command in step 2.
 
 ## Configuration
 

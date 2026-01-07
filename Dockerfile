@@ -13,11 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Expose port 8000 for the API
-EXPOSE 8000
+# Expose port 8001 for the API
+EXPOSE 8001
 
 # Define environment variable
 ENV PYTHONUNBUFFERED=1
 
 # Run the application using uvicorn
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8001"]
